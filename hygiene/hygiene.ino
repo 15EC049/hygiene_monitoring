@@ -21,14 +21,20 @@ int State = 0;         // current state of the pir sensor
 int lastState = 0;     // previous state of the pir sensor
 int keyIndex = 0;
 
-int n1,n2,n3,n4;// node values
+ char keypad_value;//keypad entry from call
+
+int n1,n2,n3;// node values
+String st;
+String name="SRITHI";
+String time;
+float percent;
 
 //m2x initialisation
 char deviceId[] = "6d85d4c7dd2ea06749e04d1bb6f2cab3"; // Device you want to receive values
 char streamName1[]= "node1"; // Stream you want to receive values
 char streamName2[]= "node2";
 char streamName3[]= "node3";
-char streamName4[]= "node4";
+//char streamName4[]= "node4";
 char streamName5[]= "uid";
 char streamName6[]= "count";
 //char streamName[]7 = "water";
@@ -42,33 +48,33 @@ WiFiClient client;
 LiquidCrystal lcd(2,9,10,5,6,8);
 
 
-BLYNK_WRITE(V0)//node1
+BLYNK_READ(V0)//node1
+{ 
+  Blynk.virtualwrite(V0,st);status
+}
+BLYNK_READ(V1)//cleaner+date and time
+{ 
+  Blynk.virtualwrite(V1,n2);//node 2 to blink
+}
+BLYNK_READ(V3)//people count
+{ 
+  Blynk.virtualwrite(V5,n3); //node 3 to blink
+}
+BLYNK_WRITE(V4)//node 1 hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
-  n1 = param.asInt(); 
+  f1 = param.asInt(); 
 }
-BLYNK_WRITE(V1)//node1
+BLYNK_WRITE(V5)//node 2 hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
-  n2 = param.asInt(); 
+  f2 = param.asInt(); 
 }
-BLYNK_WRITE(V2)//node1
+BLYNK_WRITE(V6)//cleaner hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
-  n3 = param.asInt(); 
+  f3 = param.asInt(); 
 }
-BLYNK_WRITE(V3)//node1
-{ 
-  BLYNK_LOG("Got a value: %s", param.asStr());
-  n4 = param.asInt(); 
-}
-
-//wifi connection
-char ssid[] = "Akshaya";
-char password[] = "12345678";
-
-
-
 void setup()
 {
   Serial.begin(115200);
@@ -113,20 +119,15 @@ void loop()
    }*/
     lcd.setCursor(0, 1);
   lcd.print("TOILET STATUS");
-  State = digitalRead(pirpin);
-   if (State != lastState)
-{
-  if (State == HIGH) 
-
-    {
-      people_cnt++;
-      Serial.print("number of people:  ");
-      Serial.println(people_cnt);
-    }
- lastState = State;
-}
-  
+  count_people();
+ 
 feedback = digitalRead(buttonPin);//value of feed back button
+    n1=f1==1?random(700,900):random(100);
+    n2=f2==1?random(700,900):random(100);
+    n3=random(200,300);
+  float avg=((n1+n2+n3)/3)
+  float p=(avg/1000)*100;
+  percent=100-p;
   
  Serial.print("node 1:");
  Serial.println(n1);
@@ -134,75 +135,16 @@ feedback = digitalRead(buttonPin);//value of feed back button
  Serial.println(n2);
  Serial.print("node 3:");
  Serial.println(n3);
-  Serial.print("node 4:");
- Serial.println(n4);
- if(n1==1)
- {
- x=x-25;
- 
- }
-
-  if(n2==1)
-
-  {
- x=x-25;
-  }
-  if(n3==1)
-  {
- x=x-25;
-  } 
-  if(n4==1)
-  {
- x=x-25;
-  }
- if(feedback==HIGH)
-      x=0;
- if(x==0)//vb
- {
-  Serial.println("vb");
-  lcd.setCursor(0, 2);
-  lcd.print("V.BAD");
-    lcd.setCursor(0, 3);
-  lcd.print("8%");
- }
-else if(x==25)//b
- {
-  Serial.println("b");
-  lcd.setCursor(0, 2);
-  lcd.print("BAD");
-    lcd.setCursor(0, 3);
-  lcd.print("24%");
- }
- else if(x==50)//m
- {
-  Serial.println("m");
-  lcd.setCursor(0, 2);
-  lcd.print("MEDIUM");
-    lcd.setCursor(0, 3);
-  lcd.print("50%");
- }
- else if(x==75)//g
- {
-  Serial.println("g");
-  lcd.setCursor(0, 2);
-  lcd.print("GOOD");
-    lcd.setCursor(0, 3);
-  lcd.print("78%");
- }
- else if(x==100)//vg
- {
-  Serial.println("vg");
-  lcd.setCursor(0, 2);
-  lcd.print("V.GOOD");
-    lcd.setCursor(0, 3);
-  lcd.print("98%");
- }
-  if (x==0||feedback == HIGH)
+ // Serial.print("node 4:");
+ //Serial.println(n4);
+if (percent<=25 && percent>=0)
+  
+  if (percent<=25||feedback == HIGH)
   {
     Serial.println("\n UNHYGEINE! Making phone call...\n");
-
+       twilio_warn_call();
     // if the user chooses option 1 when they receive the phone call
-    if (makeNexmoCall() == "1") 
+    if ( keypad_value == '1') 
     {
       Serial.println("The user pressed 1.\n");
     } 
@@ -215,15 +157,32 @@ else if(x==25)//b
   int response1 = m2xClient.updateStreamValue(deviceId, streamName1, n1);
   int response2 = m2xClient.updateStreamValue(deviceId, streamName2, n2);
   int response3 = m2xClient.updateStreamValue(deviceId, streamName3, n3);
-  int response4 = m2xClient.updateStreamValue(deviceId, streamName4, n4);
+  //int response4 = m2xClient.updateStreamValue(deviceId, streamName4, n4);
   int response6 = m2xClient.updateStreamValue(deviceId, streamName6, people_cnt);
   //int response5 = m2xClient.updateStreamValue(deviceId, streamName5, nam);
     Blynk.run();
 }
 
+
+void count_people()
+{
+    State = digitalRead(pirpin);
+   if (State != lastState)
+ {
+ if (State == HIGH) 
+
+    {
+      people_cnt++;
+      Serial.print("number of people:  ");
+      Serial.println(people_cnt);
+    }
+ lastState = State;
+ }
+ 
+}
+
  void twilio_warn_call()
  {
- if (calls <= maxCalls) {
     Serial.println("Running CaptureKeyPadEntry - Run #" + String(calls++));
 
     TembooChoreoSSL CaptureKeyPadEntryChoreo(client);
@@ -262,7 +221,6 @@ else if(x==25)//b
       Serial.print(c);
     }
     CaptureKeyPadEntryChoreo.close();
-  }
 
   Serial.println("\nWaiting...\n");
   delay(30000); // wait 30 seconds between CaptureKeyPadEntry calls
