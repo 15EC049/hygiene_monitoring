@@ -28,6 +28,8 @@ String st;
 String name="SRITHI";
 String time;
 float percent;
+String cln;
+int men;
 
 //m2x initialisation
 char deviceId[] = "6d85d4c7dd2ea06749e04d1bb6f2cab3"; // Device you want to receive values
@@ -47,18 +49,35 @@ M2XStreamClient m2xClient(&client, m2xKey);
 WiFiClient client;
 LiquidCrystal lcd(2,9,10,5,6,8);
 
+void clockDisplay()
+{
+  String currentTime = String(hour()) + ":" + minute() + ":" + second();
+  String currentDate = String(day()) + " " + month() + " " + year();
+  Serial.print("Current time: ");
+  Serial.print(currentTime);
+ time=currentTime;
+  Serial.print(" ");
+  Serial.print(currentDate);
+  Serial.println();
+}
 
+BLYNK_CONNECTED()
+{
+  // Synchronize time on connection
+  rtc.begin();
+}
 BLYNK_READ(V0)//node1
 { 
-  Blynk.virtualwrite(V0,st);status
+  Blynk.virtualwrite(V0,st);//status
 }
 BLYNK_READ(V1)//cleaner+date and time
 { 
-  Blynk.virtualwrite(V1,n2);//node 2 to blink
+ cln=name+"    "+time;
+  Blynk.virtualwrite(V1,cln);
 }
 BLYNK_READ(V3)//people count
 { 
-  Blynk.virtualwrite(V5,n3); //node 3 to blink
+  Blynk.virtualwrite(V5,people_cnt);
 }
 BLYNK_WRITE(V4)//node 1 hit
 { 
@@ -75,6 +94,15 @@ BLYNK_WRITE(V6)//cleaner hit
   BLYNK_LOG("Got a value: %s", param.asStr());
   f3 = param.asInt(); 
 }
+BLYNK_WRITE(V)//cleaner hit
+{ 
+  BLYNK_LOG("Got a value: %s", param.asStr());
+  men = param.asInt(); 
+}
+
+
+
+
 void setup()
 {
   Serial.begin(115200);
@@ -122,8 +150,8 @@ void loop()
   count_people();
  
 feedback = digitalRead(buttonPin);//value of feed back button
-    n1=f1==1?random(700,900):random(100);
-    n2=f2==1?random(700,900):random(100);
+    n1=(f1==1)?random(700,900):random(100);
+    n2=(f2==1)?random(700,900):random(100);
     n3=random(200,300);
   float avg=((n1+n2+n3)/3)
   float p=(avg/1000)*100;
@@ -137,7 +165,57 @@ feedback = digitalRead(buttonPin);//value of feed back button
  Serial.println(n3);
  // Serial.print("node 4:");
  //Serial.println(n4);
-if (percent<=25 && percent>=0)
+ Serial.print("Toilet Status: ");
+if(percent<=25||feedback == HIGH)//vb
+
+{
+ Serial.println("very bad");
+ lcd.setCursor(0, 2);
+ lcd.print(" V.BAD  ");
+ lcd.setCursor(0, 3);
+ lcd.print(percent);
+ lcd.print("%");
+}
+
+else if(percent>25&&percent<=35)//b
+{
+ Serial.println("bad");
+ lcd.setCursor(0, 2);
+ lcd.print(" BAD ");
+ lcd.setCursor(0, 3);
+ lcd.print(percent);
+ lcd.print("%");
+}
+
+else if(percent>35&&percent<=50)//m
+{
+ Serial.println("medium");
+ lcd.setCursor(0, 2);
+ lcd.print(" MEDIUM");
+ lcd.setCursor(0, 3);
+ lcd.print(percent);
+ lcd.print("%");
+}
+
+else if(percent>50&&percent<=75)//g
+{
+ Serial.println("good");
+ lcd.setCursor(0, 2);
+ lcd.print("GOOD ");
+ lcd.setCursor(0, 3);
+ lcd.print(percent);
+ lcd.print("%");
+}
+else if(percent>75&&percent<=100)//vg
+{
+ Serial.println("vg");
+ lcd.setCursor(0, 2);
+ lcd.print(" V.GOOD ");
+ lcd.setCursor(0, 3);
+ lcd.print(percent);
+ lcd.print("%");
+}
+
   
   if (percent<=25||feedback == HIGH)
   {
@@ -159,7 +237,7 @@ if (percent<=25 && percent>=0)
   int response3 = m2xClient.updateStreamValue(deviceId, streamName3, n3);
   //int response4 = m2xClient.updateStreamValue(deviceId, streamName4, n4);
   int response6 = m2xClient.updateStreamValue(deviceId, streamName6, people_cnt);
-  //int response5 = m2xClient.updateStreamValue(deviceId, streamName5, nam);
+  int response5 = m2xClient.updateStreamValue(deviceId, streamName5, name);
     Blynk.run();
 }
 
