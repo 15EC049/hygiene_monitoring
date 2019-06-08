@@ -34,8 +34,7 @@ char streamName6[]= "count";
 //char streamName[]7 = "water";
 char m2xKey[] = "5bcb99f9bff9c2364a7ffad3a44ceb0a"; // Your M2X access key
 
-//blynk auth
-char auth[] = "5eff5785841c4f83b9437b5dea41d4b8";
+char auth[] = "5eff5785841c4f83b9437b5dea41d4b8";//blynk auth
 
 //object
 M2XStreamClient m2xClient(&client, m2xKey);
