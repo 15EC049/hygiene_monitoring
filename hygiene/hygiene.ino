@@ -57,50 +57,63 @@ void clockDisplay()
   String currentDate = String(day()) + " " + month() + " " + year();
   Serial.print("Current time: ");
   Serial.print(currentTime);
- tym=currentTime;
+
   Serial.print(" ");
   Serial.print(currentDate);
   Serial.println();
-}
-BLYNK_CONNECTED()
-{
-  // Synchronize time on connection
-  rtc.begin();
+    if(f3==1)
+  {
+ tym=currentTime;
+ Serial.println("time Updated");
+  }
 }
 BLYNK_READ(V0)//node1
 { 
+  //Serial.println("status Upload");
   Blynk.virtualWrite(V0,st);//status
 }
 BLYNK_READ(V1)//cleaner+date and time
 { 
+  //Serial.println("clean data Upload");
  cln=name+"    "+tym;
   Blynk.virtualWrite(V1,cln);
+  
 }
 BLYNK_READ(V3)//people count
 { 
+  //Serial.println("people count upload");
   Blynk.virtualWrite(V3,cnt);
 }
 BLYNK_WRITE(V4)//node 1 hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
   f1 = param.asInt(); 
+  //Serial.println("node 1 hit");
 }
 BLYNK_WRITE(V5)//node 2 hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
   f2 = param.asInt(); 
+  //Serial.println("node2 hit");
 }
 BLYNK_WRITE(V6)//cleaner hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
   f3 = param.asInt(); 
+ // Serial.println("cleaning hit");
 }
 BLYNK_WRITE(V7)//cleaner hit
 { 
   BLYNK_LOG("Got a value: %s", param.asStr());
   men = param.asInt(); 
+  Serial.print("menu hit:");
+  //Serial.println(men);
 }
-
+BLYNK_CONNECTED()
+{
+  // Synchronize time on connection
+  rtc.begin();
+}
 //wifi connection
 char ssid[] = WIFI_SSID;
 char password[] = WPA_PASSWORD;
@@ -166,19 +179,27 @@ void loop()
       Serial.println(cnt);
     }
  lastState = State;
+ 
 }
 feedback = digitalRead(buttonPin);
+    n1=(f1==1)?random(700,900):random(100);
+    n2=(f2==1)?random(700,900):random(100);
+    n3=random(200,300);
  Serial.print("node 1:");
  Serial.println(n1);
    Serial.print("node 2:");
  Serial.println(n2);
  Serial.print("node 3:");
  Serial.println(n3);
+ float avg=(n1+n2+n3)/3;
+ percent=(avg/1024)*100;
+ percent=100-percent;
  Serial.print("Toilet Status: ");
 if(percent<=25||feedback == HIGH)//vb
 
 {
  Serial.println("very bad");
+ st="Very Bad";
  lcd.setCursor(0, 2);
  lcd.print(" V.BAD  ");
  lcd.setCursor(0, 3);
@@ -189,6 +210,9 @@ if(percent<=25||feedback == HIGH)//vb
 else if(percent>25&&percent<=35)//b
 {
  Serial.println("bad");
+ st="Bad";
+ Serial.print("status:");
+ Serial.println(st);
  lcd.setCursor(0, 2);
  lcd.print(" BAD ");
  lcd.setCursor(0, 3);
@@ -199,6 +223,7 @@ else if(percent>25&&percent<=35)//b
 else if(percent>35&&percent<=50)//m
 {
  Serial.println("medium");
+ st="Medium";
  lcd.setCursor(0, 2);
  lcd.print(" MEDIUM");
  lcd.setCursor(0, 3);
@@ -209,6 +234,7 @@ else if(percent>35&&percent<=50)//m
 else if(percent>50&&percent<=75)//g
 {
  Serial.println("good");
+ st="Good";
  lcd.setCursor(0, 2);
  lcd.print("GOOD ");
  lcd.setCursor(0, 3);
@@ -218,6 +244,7 @@ else if(percent>50&&percent<=75)//g
 else if(percent>75&&percent<=100)//vg
 {
  Serial.println("very good");
+ st="Very Good";
  lcd.setCursor(0, 2);
  lcd.print(" V.GOOD ");
  lcd.setCursor(0, 3);
@@ -228,7 +255,7 @@ else if(percent>75&&percent<=100)//vg
   {
     Serial.println("\n UNHYGEINE! Making phone call...\n");
      warncall();
-Blynk.notify("Toilet is unhygiene!!!");
+//Blynk.notify("Toilet is unhygiene!!!");
     // if the user chooses option 1 when they receive the phone call
     if (c == '1') 
     {
@@ -245,10 +272,9 @@ Blynk.notify("Toilet is unhygiene!!!");
   int response3 = m2xClient.updateStreamValue(deviceId, streamName3, n3);
 //  int response4 = m2xClient.updateStreamValue(deviceId, streamName4, n4);
   int response6 = m2xClient.updateStreamValue(deviceId, streamName6, cnt);
-  if(i==HIGH)
+  if(f3==1)
   {
   int response5 = m2xClient.updateStreamValue(deviceId, streamName5, name);
-  i==LOW;
   }
     Blynk.run();
      timer.run();
