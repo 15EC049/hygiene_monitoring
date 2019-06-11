@@ -1,5 +1,8 @@
-const int watermeterPin = 2;
-
+const int watermeterPin = 7;
+int blynkButton=2;
+int waterstatus_to_blynk=3;
+int read_water_status_pin=4;
+int motr_connected_pin=5;
 volatile int  pulse_frequency;
 unsigned int  literperhour;
 unsigned long currentTime, loopTime;
@@ -17,6 +20,18 @@ void setup()
 
 void loop ()    
 {
+  int st=digitalRead(read_water_status_pin);//water level to blynk
+  if(st==HIGH)
+  digitalWrite(waterstatus_to_blynk,HIGH);
+  else
+  digitalWrite(waterstatus_to_blynk,LOW);
+
+  
+  if(digitalRead(blynkButton)==HIGH)// motor on or off from blynk
+    digitalWrite(motr_connected_pin,HIGH);
+else
+  digitalWrite(motr_connected_pin,LOW);
+
    currentTime = millis();
    if(currentTime >= (loopTime + 1000))
    {
@@ -30,4 +45,4 @@ void loop ()
 void getFlow ()
 { 
    pulse_frequency++;
-} 
+}
