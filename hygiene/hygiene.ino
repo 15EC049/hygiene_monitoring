@@ -197,6 +197,7 @@ feedback = digitalRead(buttonPin);
  Serial.print("Toilet Status: ");
 if(percent<=25||feedback == HIGH)//vb
 
+ 
 {
  Serial.println("very bad");
  st="Very Bad";
