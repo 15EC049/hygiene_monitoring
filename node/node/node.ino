@@ -1,115 +1,127 @@
-#include <LTask.h>
-#include <LWiFi.h>
-#include <LWiFiClient.h>
+#include <ESP8266WiFi.h>
+#define server  "smartsanitation.tech"
+//Default WIFI Credential
+const char* def_ssid =  "sanitation";
+const char* def_pass =  "Smart"; 
 
-#define WIFI_AP "Your wifi user name"
-#define WIFI_PASSWORD "Your wifi password"
-#define WIFI_AUTH LWIFI_WPA
-#define SITE_URL2 "/Switch status link page.php?id=User name in table&pwd=Encrypted passwoed using MD5 HTTP/1.1"
-#define SITE_URL3 "/Sensor link page.php?id=User name in table&pwd=Encrypted passwoed using MD5"
-#define SITE_URL "Your web domanin name"
+//ADC pin Declaration
+const int analogInPin = A0;
 
-String Sensorpost = "";
-String recstring = "";
+//User Wifi Credential
+String wif_ap ="sanitation";
+String wifi_pass ="Smart";
 
-int InPin0 = A0;
-int InPin1 = A1;
-int InPin2 = A2;
-int Sen1=0;
-int Sen2=0;
-int Sen3=0;
+//Unique Sensor ID
+String sen_id="ss_7034221248";
+String get_wifi_page="/get-wifi-details.php";
 
-LWiFiClient c;
+String recstring="";
+WiFiClient client;
 
 void setup()
 {
-  LWiFi.begin();
-  Serial.begin(115200);
-
-  Serial.println("Connecting to AP");
-  while (0 == LWiFi.connect(WIFI_AP, LWiFiLoginInfo(WIFI_AUTH, WIFI_PASSWORD)))
-  {
-    delay(1000);
-  }
-
-  // keep retrying until connected to website
-  Serial.println("Connecting to WebSite");
-  while (0 == c.connect(SITE_URL, 80))
-  {
-    Serial.println("Re-Connecting to WebSite");
-    delay(1000);
-  }
-
+       Serial.begin(115200);
+       delay(10);
+ 
+       Serial.print("Connecting to ");
+       Serial.println(def_ssid);
+       WiFi.begin(def_ssid, def_pass);
+       while (WiFi.status() != WL_CONNECTED) 
+        {
+            delay(100);
+            Serial.print("*");
+        }
+      Serial.println("");
+      Serial.println("WiFi connected to default credential");
+      printWifiStatus();
+      Serial.println("Connecting to WebSite");
+      while (0 == client.connect(server, 80))
+        {
+          Serial.println("Re-Connecting to WebSite");
+          delay(1000);
+        }
+      get_new_wifi_details();
+      if(wifi_ap!="sanitation")
+      {
+        Serial.print("Connecting to ");
+        Serial.println(wif_ap);
+        WiFi.begin(wifi_ap, wifi_pass);
+        while (WiFi.status() != WL_CONNECTED) 
+          {
+            delay(100);
+            Serial.print("*");
+          }
+        Serial.println("");
+        Serial.println("WiFi connected to user credential");
+        printWifiStatus();
+      }
+      else
+      {
+        Serial.println("No New wifi found. Please visit smartsanitation.tech/wifi_details.php to give wifi details");
+      }
 }
-
-boolean disconnectedMsg = false;
-
 void loop()
 {
-  // Retrive the output status in decimal want to convet it to binary and change the respective pin status
-   if (c.connect(SITE_URL,80)) { 
-     c.println("GET  " SITE_URL2);
-     c.println("Host: " SITE_URL);     
-     c.println("Connection: close");
-     c.println();     
-      while (!c.available())
-     {
-      delay(100);
-     }
-     recstring="";
-  while (c)
-  {
-    int v = c.read();
-    if (v != -1)
-    {
-      recstring = recstring+(char)v;
-      //Serial.print((char)v);
-    }
-    else
-    {
-      //Serial.println("no more content, disconnect");
-      c.stop();
-      while (1)
-      {
-        delay(1);
-      }
-    }  
- } 
-     Serial.print(recstring);
-     if (recstring != "")
-     {
-       int firstletter = recstring.indexOf('Sensor-');
-       int secondletter = recstring.indexOf(firstletter,'Value');
-       String Result=recstring.substring(firstletter, secondletter);
-     }
-     dectobin();
+  
 }
-delay(1000);
-   Sen1 = analogRead(InPin0);
-   Sen2 = analogRead(InPin1);
-   Sen3 = analogRead(InPin2);   
-   if (c.connect(SITE_URL,80)) {  
-     Sensorpost=SITE_URL3;
-     Sensorpost=Sensorpost + "&s1=";
-     Sensorpost=Sensorpost + Sen1;
-     Sensorpost=Sensorpost + "&s2=";
-     Sensorpost=Sensorpost + Sen2;     
-     Sensorpost=Sensorpost + "&s3=";
-     Sensorpost=Sensorpost + Sen3;  
-     Sensorpost=Sensorpost + " HTTP/1.1";
-     c.println("GET  " + Sensorpost);
-     c.println("Host: " SITE_URL);     
-     c.println("Connection: close");
-     c.println();     
-      while (!c.available())
-     {
-      delay(100);
-     }
-   }
-    delay(5000);
-}
-
-
-void dectobin()
+void printWifiStatus() 
 {
+  // print the SSID of the network you're attached to:
+  Serial.print("Network Name: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
+void get_new_wifi_details()
+{
+     if (client.connect(server,80)) 
+      {
+        String str=get_wifi_page+"?senid="+sen_id;
+        client.println("GET  "+ str);
+        client.println("Host: " server);     
+        client.println("Connection: close");
+        client.println();
+        while (!client.available())
+          {
+            delay(100);
+          }
+        recstring="";
+        while (client)
+          {
+            int v = client.read();
+            if (v != -1)
+             {
+              recstring = recstring+(char)v;
+              //Serial.print((char)v);
+             }
+            else
+             {
+              //Serial.println("no more content, disconnect");
+              client.stop();
+              while (1)
+                {
+                  delay(1);
+                }
+              }  
+            } 
+           Serial.print(recstring);
+           if (recstring != "")
+            {
+              int firstletter = recstring.indexOf('AP:');
+              int secondletter = recstring.indexOf(firstletter,'pass:');
+              int thirdletter = recstring.indexOf(secondletter,'end');
+              wifi_ap=recstring.substring(firstletter, secondletter);
+              wifi_pass=recstring.substring(secondletter,thirdletter);
+     
+            }
+}
 }
