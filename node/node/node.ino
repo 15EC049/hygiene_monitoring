@@ -1,19 +1,21 @@
 #include <ESP8266WiFi.h>
 #define server  "smartsanitation.tech"
 //Default WIFI Credential
-const char* def_ssid =  "sanitation";
-const char* def_pass =  "Smart"; 
+const char* def_ssid =  "Umar";
+const char* def_pass =  "umarahammed"; 
 
 //ADC pin Declaration
 const int analogInPin = A0;
-
+//Store Sen Value
+int sensorValue = 0;
 //User Wifi Credential
-String wif_ap ="sanitation";
+String wifi_ap ="sanitation";
 String wifi_pass ="Smart";
 
 //Unique Sensor ID
-String sen_id="ss_7034221248";
+String sen_id="sen2";
 String get_wifi_page="/get-wifi-details.php";
+String send_sen_val_page="/upload-data.php";
 
 String recstring="";
 WiFiClient client;
@@ -22,7 +24,7 @@ void setup()
 {
        Serial.begin(115200);
        delay(10);
- 
+       pinMode(LED_BUILTIN, OUTPUT);
        Serial.print("Connecting to ");
        Serial.println(def_ssid);
        WiFi.begin(def_ssid, def_pass);
@@ -41,10 +43,10 @@ void setup()
           delay(1000);
         }
       get_new_wifi_details();
-      if(wifi_ap!="sanitation")
+      if(wifi_ap!=def_ssid)
       {
         Serial.print("Connecting to ");
-        Serial.println(wif_ap);
+        Serial.println(wifi_ap);
         WiFi.begin(wifi_ap, wifi_pass);
         while (WiFi.status() != WL_CONNECTED) 
           {
@@ -62,7 +64,21 @@ void setup()
 }
 void loop()
 {
-  
+  sensorValue = analogRead(analogInPin);
+  send_sen_data();
+  Serial.print("Value=");
+  Serial.print(sensorValue);
+  delay(2000);
+  led_blink();
+  delay(300000);
+}
+
+void led_blink()
+{
+  digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);   // wait for a second
+  digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off by making the voltage LOW
+  delay(1000);   
 }
 void printWifiStatus() 
 {
@@ -81,11 +97,13 @@ void printWifiStatus()
   Serial.print(rssi);
   Serial.println(" dBm");
 }
-void get_new_wifi_details()
+
+void send_sen_data()
 {
-     if (client.connect(server,80)) 
+       if (client.connect(server,80)) 
       {
-        String str=get_wifi_page+"?senid="+sen_id;
+        String v=String(sensorValue);
+        String str=send_sen_val_page+"?id="+sen_id+"&val="+v+" HTTP/1.1";
         client.println("GET  "+ str);
         client.println("Host: " server);     
         client.println("Connection: close");
@@ -114,14 +132,67 @@ void get_new_wifi_details()
               }  
             } 
            Serial.print(recstring);
+      }
+  
+}
+void get_new_wifi_details()
+{
+     if (client.connect(server,80)) 
+      {
+        String str=get_wifi_page+"?id="+sen_id+" HTTP/1.1";
+        client.println("GET  "+ str);
+        client.println("Host: " server);     
+        client.println("Connection: close");
+        client.println();
+        while (!client.available())
+          {
+            delay(100);
+          }
+        recstring="";
+        while (client)
+          {
+            int v = client.read();
+            if (v != -1)
+             {
+              recstring = recstring+(char)v;
+              //Serial.print((char)v);
+             }
+            else
+             {
+              //Serial.println("no more content, disconnect");
+              client.stop();
+              while (1)
+                {
+                  delay(1);
+                }
+              }  
+            } 
+           Serial.print(recstring);
+           String st="";
            if (recstring != "")
             {
-              int firstletter = recstring.indexOf('AP:');
-              int secondletter = recstring.indexOf(firstletter,'pass:');
-              int thirdletter = recstring.indexOf(secondletter,'end');
-              wifi_ap=recstring.substring(firstletter, secondletter);
-              wifi_pass=recstring.substring(secondletter,thirdletter);
-     
+              int len=recstring.length();
+              int i=0;
+              for (i=0;i<len;i++)
+              {
+                if(recstring.charAt(i)!=':')
+                {
+                  st=st+recstring.charAt(i);
+                }
+                else
+                {
+                  wifi_ap=st;
+                  st="";
+                }
+                
+              }
+              wifi_pass=st;
+              Serial.println("");
+              Serial.print("Got New WIFI details from server AP:");
+              Serial.print(wifi_ap);
+              Serial.print("   Password:");
+              Serial.println(wifi_pass);
             }
+
 }
 }
